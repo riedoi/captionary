@@ -1,0 +1,16 @@
+__pycache__
+.git
+.gitignore
+.DS_Store
+*.srt
+*.mp3
+*.wav
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.flac
+*.ogg
+*.webm
+venv
+.env

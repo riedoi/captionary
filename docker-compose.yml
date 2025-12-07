@@ -1,0 +1,11 @@
+services:
+  captionary:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  huggingface_cache:

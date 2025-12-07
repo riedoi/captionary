@@ -1,6 +1,7 @@
 import os
 import shutil
-from fastapi import FastAPI, UploadFile, File, Form
+import uuid
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 import json
 from fastapi.responses import FileResponse, StreamingResponse
@@ -16,10 +17,16 @@ async def read_index():
     return FileResponse("static/index.html")
 
 @app.get("/download/{filename}")
-async def download_file(filename: str):
+async def download_file(filename: str, background_tasks: BackgroundTasks, download_name: str = None):
     file_path = os.path.join(os.getcwd(), filename)
     if os.path.exists(file_path):
-        return FileResponse(file_path, filename=filename, media_type="application/x-subrip")
+        # Default to the filename on disk if no custom name is provided
+        display_name = download_name if download_name else filename
+        
+        # Schedule file deletion after the response is sent
+        background_tasks.add_task(os.remove, file_path)
+        
+        return FileResponse(file_path, filename=display_name, media_type="application/x-subrip")
     return {"error": "File not found"}
 
 @app.post("/transcribe")
@@ -31,8 +38,11 @@ async def transcribe(
     device: str = Form("cpu"),
     compute_type: str = Form("int8")
 ):
-    # Save uploaded file temporarily
-    temp_filename = file.filename
+    # Save uploaded file temporarily using a unique ID
+    file_ext = os.path.splitext(file.filename)[1]
+    file_id = str(uuid.uuid4())
+    temp_filename = f"{file_id}{file_ext}"
+    
     with open(temp_filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
@@ -50,9 +60,10 @@ async def transcribe(
             
             for item in generator:
                 if item["type"] == "complete":
-                    # Send the download URL instead of the path
-                    filename = os.path.basename(item["path"])
-                    yield json.dumps({"type": "complete", "url": f"/download/{filename}"}) + "\n"
+                    # Send the download URL with the original filename as a query param
+                    generated_filename = os.path.basename(item["path"])
+                    original_srt_name = os.path.splitext(file.filename)[0] + ".srt"
+                    yield json.dumps({"type": "complete", "url": f"/download/{generated_filename}?download_name={original_srt_name}"}) + "\n"
                 else:
                     yield json.dumps(item) + "\n"
                     

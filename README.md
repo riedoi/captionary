@@ -1,11 +1,14 @@
-# Captionary
+# Captionary - Automated Audio & Video Transcription
+![CI](https://github.com/riedoi/captionary/actions/workflows/ci.yml/badge.svg)
 
-Captionary is a powerful and user-friendly tool for generating subtitles from audio and video files using OpenAI's Whisper models (via `faster-whisper`). It offers both a modern web interface and a robust command-line tool for bulk processing.
-
-> **🔒 Privacy First**: All processing happens locally on your device. Your audio and video files never leave your computer.
+Captionary is a local, privacy-focused tool that automatically generates subtitles for your audio and video files using OpenAI's Whisper model (via [faster-whisper](https://github.com/guillaumekln/faster-whisper)).
 
 ## Features
 
+- **Local Processing**: All transcription happens on your machine. No data is sent to the cloud.
+- **Bulk Support**: Transcribe entire directories of media files at once.
+- **Auto-Cleanup**: Automatically cleans up temporary files after processing.
+- **Docker Support**: Run easily anywhere with Docker.
 - **Web Interface**: Drag & drop your files, select language and model, and watch the progress in real-time.
 - **Bulk Processing**: Transcribe entire directories or multiple files at once using the CLI.
 - **Video Support**: Directly upload MP4, MKV, MOV, AVI, and more.
@@ -30,6 +33,31 @@ Captionary is a powerful and user-friendly tool for generating subtitles from au
    ```bash
    pip install -r requirements.txt
    ```
+
+
+## Running with Docker
+
+You can run Captionary easily using Docker. This handles all dependencies (including ffmpeg) for you.
+
+### Option 1: Use the Pre-built Image (Recommended)
+You can pull the latest image directly from GitHub Container Registry:
+
+```bash
+docker run -d -p 8000:8000 -v huggingface_cache:/root/.cache/huggingface --name captionary ghcr.io/riedoi/captionary:main
+```
+*Note: We mount a volume so models don't need to re-download every time.*
+
+### Option 2: Build from Source
+If you want to build it yourself or modify the code:
+
+1. Build and run with Docker Compose:
+   ```bash
+   docker-compose up --build
+   ```
+
+2. Open your browser and navigate to `http://localhost:8000`.
+
+The Docker setup includes a persistent volume for the Hugging Face model cache, so models are only downloaded once.
 
 ## Usage
 
@@ -69,6 +97,20 @@ python fw_srt.py /path/to/media/folder --device cuda
 - `--device`: Compute device (`cpu` or `cuda`). Default: `cpu`.
 - `--compute_type`: Quantization (`int8`, `float16`, etc.). Default: `int8`.
 - `--offset`: Time offset for subtitles (e.g., `00:30:00`).
+
+## Development
+
+### Running Tests
+To run the tests locally:
+
+1. Install test dependencies:
+   ```bash
+   pip install pytest httpx
+   ```
+2. Run pytest:
+   ```bash
+   pytest
+   ```
 
 ## License
 
