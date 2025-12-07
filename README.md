@@ -109,7 +109,7 @@ To run the tests locally:
    ```
 2. Run pytest:
    ```bash
-   pytest
+   python -m pytest
    ```
 
 ## License
