@@ -43,7 +43,7 @@ You can run Captionary easily using Docker. This handles all dependencies (inclu
 You can pull the latest image directly from GitHub Container Registry:
 
 ```bash
-docker run -d -p 8000:8000 -v huggingface_cache:/root/.cache/huggingface --name captionary ghcr.io/riedoi/captionary:main
+docker run -d -p 8000:8000 -v huggingface_cache:/root/.cache/huggingface --name captionary ghcr.io/riedoi/captionary:latest
 ```
 *Note: We mount a volume so models don't need to re-download every time.*
 
