@@ -96,13 +96,13 @@ def transcribe_file(audio_path, model_size="medium", lang=None, offset_str="", d
     yield {"type": "complete", "path": out_path}
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Captionary CLI - Auto-generate subtitles for audio/video files.")
     ap.add_argument("input_path", nargs="+", help="Audio file(s) or directory to transcribe")
-    ap.add_argument("--model", default="medium")  # "medium" | "large-v2" | "large-v3"
-    ap.add_argument("--lang", default=None)
-    ap.add_argument("--offset", default="")      # z.B. 00:30:00 für part2
-    ap.add_argument("--device", default="cpu")   # "cpu" oder "cuda"
-    ap.add_argument("--compute_type", default="int8")  # "int8","int8_float16","float16","float32"
+    ap.add_argument("--model", default="medium", help="Model size: tiny, base, small, medium, large-v2, large-v3 (Default: medium)")
+    ap.add_argument("--lang", default=None, help="Language code (e.g. en, tr). (Default: Auto-detect)")
+    ap.add_argument("--offset", default="", help="Time offset for subtitles, e.g. 00:30:00. (Default: None)")
+    ap.add_argument("--device", default="cpu", help="Compute device: cpu or cuda. (Default: cpu)")
+    ap.add_argument("--compute_type", default="int8", help="Quantization: int8, int8_float16, float16, float32. (Default: int8)")
     args = ap.parse_args()
 
     files_to_process = []

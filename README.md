@@ -59,6 +59,15 @@ If you want to build it yourself or modify the code:
 
 The Docker setup includes a persistent volume for the Hugging Face model cache, so models are only downloaded once.
 
+### Option 3: Run CLI with Docker (One-off)
+You can also use the Docker image to run the CLI tool directly on your files without installing Python:
+
+```bash
+# Mount current directory to /data in container and process video.mkv
+docker run --rm -v $(pwd):/data -v huggingface_cache:/root/.cache/huggingface ghcr.io/riedoi/captionary:latest python fw_srt.py /data/video.mkv --model medium
+```
+*Note: Make sure to use `/data/filename` so the container can find your mounted file.*
+
 ## Usage
 
 ### Web Interface
@@ -78,12 +87,12 @@ You can use `fw_srt.py` directly for batch processing.
 
 **Transcribe a single file:**
 ```bash
-python fw_srt.py audio.mp3 --model medium --lang tr
+python fw_srt.py video.mkv --model medium --lang tr
 ```
 
 **Transcribe multiple files:**
 ```bash
-python fw_srt.py file1.mp3 file2.mp4 --model large-v2
+python fw_srt.py part1.mkv part2.mkv --model large-v2
 ```
 
 **Transcribe an entire directory:**
