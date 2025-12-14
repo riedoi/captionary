@@ -56,6 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        // Handle Swiss German selection
+        const modelSelect = document.getElementById('model');
+        const langSelect = document.getElementById('lang');
+        const SWISS_GERMAN_MODEL = 'nebi/whisper-large-v3-turbo-swiss-german-ct2-int8';
+
+        langSelect.addEventListener('change', () => {
+            if (langSelect.value === 'gsw') {
+                modelSelect.value = SWISS_GERMAN_MODEL;
+                showStatus('Swiss German model auto-selected.', 'normal');
+            }
+        });
+
+        modelSelect.addEventListener('change', () => {
+            // Optional logic if needed when model changes manually
+        });
+
+
         if (!fileInput.files.length) {
             showStatus('Please select a file first.', 'error');
             return;
@@ -73,6 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
         progressText.textContent = '0%';
 
         const formData = new FormData(form);
+
+        // Map Swiss German (gsw) to German (de) for the backend/model
+        if (formData.get('lang') === 'gsw') {
+            formData.set('lang', 'de');
+        }
 
         try {
             const response = await fetch('/transcribe', {

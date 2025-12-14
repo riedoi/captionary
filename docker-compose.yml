@@ -4,6 +4,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - .:/app
       - huggingface_cache:/root/.cache/huggingface
     restart: unless-stopped
 

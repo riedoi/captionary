@@ -101,7 +101,7 @@ python fw_srt.py /path/to/media/folder --device cuda
 ```
 
 **Options:**
-- `--model`: Model size (tiny, base, small, medium, large-v2, large-v3). Default: `medium`.
+- `--model`: Model size (tiny, base, small, medium, large-v2, large-v3) or `nebi/whisper-large-v3-turbo-swiss-german-ct2-int8`. Default: `medium`.
 - `--lang`: Language code (e.g., en, tr, de, fr). Default: Auto-detect.
 - `--device`: Compute device (`cpu` or `cuda`). Default: `cpu`.
 - `--compute_type`: Quantization (`int8`, `float16`, etc.). Default: `int8`.
