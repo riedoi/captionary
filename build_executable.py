@@ -16,6 +16,28 @@ def build():
         print(f"Error: {ffmpeg_binary} not found. Run scripts/download_ffmpeg.py first.")
         sys.exit(1)
         
+    # 2.5 Generate Icons
+    icon_file = None
+    try:
+        from PIL import Image
+        img_path = os.path.join(base_dir, "static", "logo.png")
+        if os.path.exists(img_path):
+            img = Image.open(img_path)
+            if sys.platform.startswith("win"):
+                icon_file = os.path.join(base_dir, "Captionary.ico")
+                img.save(icon_file, format="ICO", sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
+                print(f"Generated Windows icon: {icon_file}")
+            elif sys.platform.startswith("darwin"):
+                icon_file = os.path.join(base_dir, "Captionary.icns")
+                # Pillow might support ICNS writing
+                img.save(icon_file, format="ICNS") 
+                print(f"Generated macOS icon: {icon_file}")
+    except Exception as e:
+        print(f"Warning: Failed to generate icon: {e}")
+        # On Mac, PyInstaller might handle PNG directly in newer versions
+        if sys.platform.startswith("darwin"):
+             icon_file = os.path.join(base_dir, "static", "logo.png")
+
     # 3. Construct PyInstaller command
     app_name = "Captionary"
     
@@ -32,7 +54,8 @@ def build():
         "engineio.async_drivers.asgi",
         "faster_whisper",
         "webview",
-        "clr" # Windows specific for pythonnet but harmless to list here? actually might error if not found. Let's be minimal.
+        "clr", # Windows specific for pythonnet but harmless to list here? actually might error if not found. Let's be minimal.
+        "PIL" # Ensure Pillow is available in the bundle if we used it? No, build-time only.
     ]
     
     # OS Specific hidden imports for pywebview
@@ -69,6 +92,9 @@ def build():
         
         "gui_launcher.py"
     ]
+    
+    if icon_file and os.path.exists(icon_file):
+        cmd.append(f"--icon={icon_file}")
     
     for imp in hidden_imports:
         cmd.append(f"--hidden-import={imp}")
