@@ -131,4 +131,11 @@ To run the tests locally:
 
 ## License
 
-MIT License
+This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
+
+## Legal & Compliance
+
+This application bundles binaries of **FFmpeg**, which are licensed under the **GNU General Public License (GPL) v3.0**.
+- The FFmpeg binaries are downloaded from [Gyan.dev](https://www.gyan.dev/ffmpeg/builds/) (Windows) and [Evermeet.cx](https://evermeet.cx/ffmpeg/) (macOS).
+- Modifications to the source code of this application are allowed and encouraged, but you must distribute your modifications under the same GPLv3 license.
+- You can access the source code for the bundled FFmpeg versions from the [FFmpeg official website](https://ffmpeg.org/download.html).
