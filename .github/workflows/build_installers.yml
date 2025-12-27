@@ -34,7 +34,7 @@ jobs:
 
     # Windows specific packaging
     - name: Upload Windows Exe
-      if: matrix.os == 'windows-latest'
+      if: matrix.os == 'windows-latest' && github.event_name == 'release'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,6 +43,13 @@ jobs:
         asset_path: ./dist/Captionary.exe
         asset_name: Captionary-Windows.exe
         asset_content_type: application/vnd.microsoft.portable-executable
+
+    - name: Upload Windows Artifact
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Captionary-Windows
+        path: ./dist/Captionary.exe
 
     # macOS specific packaging
     - name: Create DMG (macOS)
@@ -56,7 +63,7 @@ jobs:
         mv "Captionary 0.0.0.dmg" Captionary-macOS.dmg || mv *.dmg Captionary-macOS.dmg
 
     - name: Upload macOS DMG
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-latest' && github.event_name == 'release'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,3 +72,10 @@ jobs:
         asset_path: ./dist/Captionary-macOS.dmg
         asset_name: Captionary-macOS.dmg
         asset_content_type: application/octet-stream
+
+    - name: Upload macOS Artifact
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Captionary-macOS
+        path: ./dist/Captionary-macOS.dmg
