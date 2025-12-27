@@ -1,9 +1,10 @@
 name: Build Installers
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-  release:
-    types: [created]
 
 jobs:
   build:
@@ -32,90 +33,43 @@ jobs:
     - name: Build Executable
       run: python build_executable.py
 
-    # Windows specific packaging
-    - name: Compress Windows Build
-      if: matrix.os == 'windows-latest'
-      run: Compress-Archive -Path dist/Captionary -DestinationPath dist/Captionary-Windows.zip
-
-    - name: Generate Checksum
+    # Windows Packaging
+    - name: Package Windows
       if: matrix.os == 'windows-latest'
       run: |
+        Compress-Archive -Path dist/Captionary -DestinationPath dist/Captionary-Windows.zip
         $hash = (Get-FileHash dist/Captionary-Windows.zip -Algorithm SHA256).Hash
         "$hash *Captionary-Windows.zip" | Out-File dist/Captionary-Windows.zip.sha256 -Encoding ASCII
 
-    - name: Upload Windows Windows Checksum
-      if: matrix.os == 'windows-latest' && github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/Captionary-Windows.zip.sha256
-        asset_name: Captionary-Windows.zip.sha256
-        asset_content_type: text/plain
-
-    - name: Upload Windows Exe
-      if: matrix.os == 'windows-latest' && github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/Captionary-Windows.zip
-        asset_name: Captionary-Windows.zip
-        asset_content_type: application/zip
-
-    - name: Upload Windows Artifact
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: Captionary-Windows
-        path: |
-          ./dist/Captionary-Windows.zip
-          ./dist/Captionary-Windows.zip.sha256
-
-    # macOS specific packaging
-    - name: Create DMG (macOS)
+    # macOS Packaging
+    - name: Package macOS
       if: matrix.os == 'macos-latest'
       run: |
         npm install -g create-dmg
-        # PyInstaller --windowed creates Captionary.app in dist/
-        # We need to make sure the executable inside matches what we want
         cd dist
         create-dmg Captionary.app || echo "DMG creation fallback"
         mv "Captionary 0.0.0.dmg" Captionary-macOS.dmg || mv *.dmg Captionary-macOS.dmg
+        shasum -a 256 Captionary-macOS.dmg > Captionary-macOS.dmg.sha256
 
-    - name: Generate Checksum
-      if: matrix.os == 'macos-latest'
-      run: shasum -a 256 dist/Captionary-macOS.dmg > dist/Captionary-macOS.dmg.sha256
-
-    - name: Upload macOS Checksum
-      if: matrix.os == 'macos-latest' && github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/Captionary-macOS.dmg.sha256
-        asset_name: Captionary-macOS.dmg.sha256
-        asset_content_type: text/plain
-
-    - name: Upload macOS DMG
-      if: matrix.os == 'macos-latest' && github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/Captionary-macOS.dmg
-        asset_name: Captionary-macOS.dmg
-        asset_content_type: application/octet-stream
-
-    - name: Upload macOS Artifact
-      if: matrix.os == 'macos-latest'
+    # Upload Artifacts (for manual runs/debugging)
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Captionary-macOS
+        name: Captionary-${{ matrix.os }}
         path: |
-          ./dist/Captionary-macOS.dmg
-          ./dist/Captionary-macOS.dmg.sha256
+          dist/Captionary-Windows.zip
+          dist/Captionary-Windows.zip.sha256
+          dist/Captionary-macOS.dmg
+          dist/Captionary-macOS.dmg.sha256
+        if-no-files-found: ignore
+
+    # Create Release (Automatic)
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/Captionary-Windows.zip
+          dist/Captionary-Windows.zip.sha256
+          dist/Captionary-macOS.dmg
+          dist/Captionary-macOS.dmg.sha256
