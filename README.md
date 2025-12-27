@@ -18,10 +18,18 @@ Captionary is a local, privacy-focused tool that automatically generates subtitl
 
 ## Prerequisites
 
-- Python 3.8+
-- [ffmpeg](https://ffmpeg.org/download.html) installed and available in your system PATH.
+- Python 3.8+ (for source)
+- [ffmpeg](https://ffmpeg.org/download.html) (for source)
 
 ## Installation
+
+### Option 1: Desktop App (Recommended)
+Download the latest installer for your system from the [Releases](https://github.com/riedoi/captionary/releases) page.
+- **Windows**: Download `Captionary-Windows.exe` and run it.
+- **macOS**: Download `Captionary-macOS.dmg`, drag the app to Applications, and run it.
+  *Note: Since the app is not signed, you might need to Right Click > Open to bypass the security warning on macOS.*
+
+### Option 2: Run with Docker
 
 1. Clone the repository:
    ```bash

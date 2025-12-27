@@ -1,0 +1,67 @@
+name: Build Installers
+
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Download FFmpeg
+      run: python scripts/download_ffmpeg.py
+
+    - name: Build Executable
+      run: python build_executable.py
+
+    # Windows specific packaging
+    - name: Upload Windows Exe
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./dist/Captionary.exe
+        asset_name: Captionary-Windows.exe
+        asset_content_type: application/vnd.microsoft.portable-executable
+
+    # macOS specific packaging
+    - name: Create DMG (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        npm install -g create-dmg
+        # PyInstaller --windowed creates Captionary.app in dist/
+        # We need to make sure the executable inside matches what we want
+        cd dist
+        create-dmg Captionary.app || echo "DMG creation fallback"
+        mv "Captionary 0.0.0.dmg" Captionary-macOS.dmg || mv *.dmg Captionary-macOS.dmg
+
+    - name: Upload macOS DMG
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./dist/Captionary-macOS.dmg
+        asset_name: Captionary-macOS.dmg
+        asset_content_type: application/octet-stream

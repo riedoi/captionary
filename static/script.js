@@ -41,6 +41,36 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(files);
     }
 
+    // Native picker for "Browse Files" button
+    window.pickFile = async function () {
+        if (window.pywebview && window.pywebview.api) {
+            const filePath = await window.pywebview.api.pick_file();
+            if (filePath) {
+                // Store path in a hidden or state variable
+                window.selectedFilePath = filePath;
+                // Show path-only name (or full path if you prefer)
+                fileNameDisplay.textContent = filePath.split('/').pop() || filePath.split('\\').pop();
+                // Clear drag-and-drop file input
+                fileInput.value = '';
+            }
+        } else {
+            // Fallback for browser testing
+            document.getElementById('fileInput').click();
+        }
+    };
+
+    // Update button onclick attribute in HTML handled below or update HTML file?
+    // Let's just attach event listener to the existing button if we can find it.
+    // The HTML has onclick="document.getElementById('fileInput').click()". 
+    // We should override this behavior.
+    const browseBtn = document.querySelector('.btn-secondary');
+    if (browseBtn) {
+        browseBtn.onclick = (e) => {
+            e.preventDefault();
+            window.pickFile();
+        };
+    }
+
     fileInput.addEventListener('change', function () {
         handleFiles(this.files);
     });
@@ -49,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (files.length > 0) {
             fileInput.files = files;
             fileNameDisplay.textContent = files[0].name;
+            window.selectedFilePath = null; // Clear native path if user used drag-drop/fallback
         }
     }
 
@@ -73,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-        if (!fileInput.files.length) {
+        if (!fileInput.files.length && !window.selectedFilePath) {
             showStatus('Please select a file first.', 'error');
             return;
         }
@@ -91,6 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formData = new FormData(form);
 
+        if (window.selectedFilePath) {
+            formData.append('file_path', window.selectedFilePath);
+            // If we have a path, we don't need the file input content?
+            // But Form might still send empty file part. Backend handles logic.
+        }
+
         // Map Swiss German (gsw) to German (de) for the backend/model
         if (formData.get('lang') === 'gsw') {
             formData.set('lang', 'de');
@@ -101,6 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 body: formData
             });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Server responded with ${response.status}: ${errText}`);
+            }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -129,14 +171,32 @@ document.addEventListener('DOMContentLoaded', () => {
                             progressText.textContent = '100%';
                             showStatus('Transcription complete! Download started.', 'success');
 
-                            // Trigger download
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = data.url;
-                            a.download = data.url.split('/').pop();
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
+                            // Fetch and save via native API
+                            try {
+                                const fileRes = await fetch(data.url);
+                                const text = await fileRes.text();
+
+                                const urlParams = new URLSearchParams(data.url.split('?')[1]);
+                                const filename = urlParams.get('download_name') || 'subtitles.srt';
+
+                                if (window.pywebview && window.pywebview.api) {
+                                    await window.pywebview.api.save_file(text, filename);
+                                    showStatus('File saved successfully!', 'success');
+                                } else {
+                                    // Fallback for non-webview (e.g. browser testing)
+                                    const blob = new Blob([text], { type: 'text/plain' });
+                                    const a = document.createElement('a');
+                                    a.style.display = 'none';
+                                    a.href = URL.createObjectURL(blob);
+                                    a.download = filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                }
+                            } catch (e) {
+                                console.error('Download error:', e);
+                                showStatus(`Download failed: ${e.message}`, 'error');
+                            }
                         } else if (data.type === 'error') {
                             showStatus(`Error: ${data.message}`, 'error');
                         }
@@ -147,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            showStatus('An unexpected error occurred.', 'error');
+            showStatus(`Error: ${error.message}`, 'error');
         } finally {
             setLoading(false);
         }
