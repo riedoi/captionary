@@ -2,15 +2,23 @@ import argparse, math, os
 from faster_whisper import WhisperModel
 
 def ts(t):
-    ms = int(round((t - int(t)) * 1000)); t = int(t)
-    h = t//3600; m = (t%3600)//60; s = t%60
+    ms = int(round((t - int(t)) * 1000))
+    t = int(t)
+    h = t // 3600
+    m = (t % 3600) // 60
+    s = t % 60
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 def parse_offset(s):
-    if not s: return 0.0
+    if not s:
+        return 0.0
     parts = [float(p) for p in s.split(":")]
-    if len(parts)==3: h,m,sec = parts; return h*3600+m*60+sec
-    if len(parts)==2: m,sec = parts;  return m*60+sec
+    if len(parts) == 3:
+        h, m, sec = parts
+        return h * 3600 + m * 60 + sec
+    if len(parts) == 2:
+        m, sec = parts
+        return m * 60 + sec
     return float(s)
 
 def transcribe_file(audio_path, model_size="medium", lang=None, offset_str="", device="cpu", compute_type="int8"):

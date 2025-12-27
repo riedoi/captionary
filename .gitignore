@@ -51,3 +51,7 @@ Thumbs.db
 
 # Ignore uploaded files (but keep the directory structure)
 # If you want to keep certain files, add exceptions here
+
+# Binaries
+ffmpeg
+ffmpeg.exe
