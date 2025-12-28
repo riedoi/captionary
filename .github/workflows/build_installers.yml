@@ -87,5 +87,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-artifacts/*
-          draft: true # Safe default, change to false if you want instant publish
+          draft: false # Set to false so releases are visible to the public immediately
           prerelease: false
