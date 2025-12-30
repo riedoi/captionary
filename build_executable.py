@@ -72,28 +72,37 @@ def build():
     fw_path = os.path.dirname(faster_whisper.__file__)
     assets_path = os.path.join(fw_path, "assets")
 
-    # [FIX] Manually locate Python.Runtime.dll for pythonnet/clr_loader on Windows
-    # This is required because clr_loader often fails to find it in frozen builds
+    # [FIX] Manually locate Python.Runtime.dll and .deps.json for pythonnet/clr_loader on Windows
     python_runtime_dll = None
+    python_runtime_json = None
     if sys.platform.startswith("win"):
         try:
             import pythonnet
             pynet_path = os.path.dirname(pythonnet.__file__)
             # Try 3.0+ location
             dll_path = os.path.join(pynet_path, "runtime", "Python.Runtime.dll")
+            json_path = os.path.join(pynet_path, "runtime", "Python.Runtime.deps.json")
+            
             if os.path.exists(dll_path):
                 python_runtime_dll = dll_path
-            else:
+            if os.path.exists(json_path):
+                python_runtime_json = json_path
+                
+            if not python_runtime_dll:
                 # Fallback search
                 for root, dirs, files in os.walk(sys.prefix):
                     if "Python.Runtime.dll" in files:
                         python_runtime_dll = os.path.join(root, "Python.Runtime.dll")
+                    if "Python.Runtime.deps.json" in files:
+                        python_runtime_json = os.path.join(root, "Python.Runtime.deps.json")
+                    if python_runtime_dll and python_runtime_json:
                         break
             
             if python_runtime_dll:
                 print(f"Found Python.Runtime.dll at: {python_runtime_dll}")
-            else:
-                print("Warning: Could not locate Python.Runtime.dll")
+            if python_runtime_json:
+                 print(f"Found Python.Runtime.deps.json at: {python_runtime_json}")
+
         except ImportError:
             print("Warning: pythonnet not installed in build environment?")
     
@@ -110,9 +119,13 @@ def build():
         # Add binary
         f"--add-binary={ffmpeg_binary}{os.pathsep}.",
         
-        # [FIX] Add Python.Runtime.dll to root if found
+        # [FIX] Add Python.Runtime.dll to pythonnet/runtime AND root to be safe
+        *( [f"--add-binary={python_runtime_dll}{os.pathsep}pythonnet{os.sep}runtime"] if python_runtime_dll else [] ),
         *( [f"--add-binary={python_runtime_dll}{os.pathsep}."] if python_runtime_dll else [] ),
-        
+        # [FIX] Also add the .deps.json config file if found (common requirement for 3.0+)
+        *( [f"--add-data={python_runtime_json}{os.pathsep}pythonnet{os.sep}runtime"] if python_runtime_json else [] ),
+        *( [f"--add-data={python_runtime_json}{os.pathsep}."] if python_runtime_json else [] ),
+
         # MacOS Specifics
         "--osx-bundle-identifier=com.riedoi.captionary",
         
