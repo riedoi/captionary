@@ -55,7 +55,8 @@ def build():
         "faster_whisper",
         "webview",
         "clr", # Windows specific for pythonnet but harmless to list here? actually might error if not found. Let's be minimal.
-        "PIL" # Ensure Pillow is available in the bundle if we used it? No, build-time only.
+        "PIL", # Ensure Pillow is available in the bundle if we used it? No, build-time only.
+        "setuptools"
     ]
     
     # OS Specific hidden imports for pywebview
@@ -70,6 +71,31 @@ def build():
     import faster_whisper
     fw_path = os.path.dirname(faster_whisper.__file__)
     assets_path = os.path.join(fw_path, "assets")
+
+    # [FIX] Manually locate Python.Runtime.dll for pythonnet/clr_loader on Windows
+    # This is required because clr_loader often fails to find it in frozen builds
+    python_runtime_dll = None
+    if sys.platform.startswith("win"):
+        try:
+            import pythonnet
+            pynet_path = os.path.dirname(pythonnet.__file__)
+            # Try 3.0+ location
+            dll_path = os.path.join(pynet_path, "runtime", "Python.Runtime.dll")
+            if os.path.exists(dll_path):
+                python_runtime_dll = dll_path
+            else:
+                # Fallback search
+                for root, dirs, files in os.walk(sys.prefix):
+                    if "Python.Runtime.dll" in files:
+                        python_runtime_dll = os.path.join(root, "Python.Runtime.dll")
+                        break
+            
+            if python_runtime_dll:
+                print(f"Found Python.Runtime.dll at: {python_runtime_dll}")
+            else:
+                print("Warning: Could not locate Python.Runtime.dll")
+        except ImportError:
+            print("Warning: pythonnet not installed in build environment?")
     
     cmd = [
         "pyinstaller",
@@ -84,11 +110,17 @@ def build():
         # Add binary
         f"--add-binary={ffmpeg_binary}{os.pathsep}.",
         
+        # [FIX] Add Python.Runtime.dll to root if found
+        *( [f"--add-binary={python_runtime_dll}{os.pathsep}."] if python_runtime_dll else [] ),
+        
         # MacOS Specifics
         "--osx-bundle-identifier=com.riedoi.captionary",
         
         # Collect all explicit faster-whisper data just in case
         "--collect-all=faster_whisper",
+        "--collect-all=ctranslate2",
+        "--collect-all=pythonnet",
+        "--collect-all=clr_loader",
         
         "gui_launcher.py"
     ]
