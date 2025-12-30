@@ -126,8 +126,10 @@ def build():
         *( [f"--add-data={python_runtime_json}{os.pathsep}pythonnet{os.sep}runtime"] if python_runtime_json else [] ),
         *( [f"--add-data={python_runtime_json}{os.pathsep}."] if python_runtime_json else [] ),
 
-        # MacOS Specifics
         "--osx-bundle-identifier=com.riedoi.captionary",
+        
+        # [FIX] Runtime hook to help pythonnet find dependencies
+        "--runtime-hook=hook-pythonnet-runtime.py",
         
         # Collect all explicit faster-whisper data just in case
         "--collect-all=faster_whisper",
