@@ -26,6 +26,7 @@ Captionary is a local, privacy-focused tool that automatically generates subtitl
 ### Option 1: Desktop App (Recommended)
 Download the latest installer for your system from the [Releases](https://github.com/riedoi/captionary/releases) page.
 - **Windows**: Download `Captionary-Windows.exe` and run it.
+  * *Requirement*: You need the [.NET Desktop Runtime 6.0+](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) installed (usually already present on Windows 10/11).
 - **macOS**: Download `Captionary-macOS.dmg`, drag the app to Applications, and run it.
   *Note: Since the app is not signed, you might need to Right Click > Open to bypass the security warning on macOS.*
 
