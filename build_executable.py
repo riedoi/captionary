@@ -103,6 +103,22 @@ def build():
             if python_runtime_json:
                  print(f"Found Python.Runtime.deps.json at: {python_runtime_json}")
 
+            # [FIX] Also look for runtimeconfig.json (Critical for .NET 6+ initialization)
+            # Usually named Python.Runtime.runtimeconfig.json
+            python_runtime_config = None
+            config_path = os.path.join(pynet_path, "runtime", "Python.Runtime.runtimeconfig.json")
+            if os.path.exists(config_path):
+                python_runtime_config = config_path
+            else:
+                 # Fallback search
+                 for root, dirs, files in os.walk(sys.prefix):
+                    if "Python.Runtime.runtimeconfig.json" in files:
+                        python_runtime_config = os.path.join(root, "Python.Runtime.runtimeconfig.json")
+                        break
+            
+            if python_runtime_config:
+                print(f"Found Python.Runtime.runtimeconfig.json at: {python_runtime_config}")
+
         except ImportError:
             print("Warning: pythonnet not installed in build environment?")
     
@@ -125,6 +141,9 @@ def build():
         # [FIX] Also add the .deps.json config file if found (common requirement for 3.0+)
         *( [f"--add-data={python_runtime_json}{os.pathsep}pythonnet{os.sep}runtime"] if python_runtime_json else [] ),
         *( [f"--add-data={python_runtime_json}{os.pathsep}."] if python_runtime_json else [] ),
+        # [FIX] Add .runtimeconfig.json (Critical for .NET host policy)
+        *( [f"--add-data={python_runtime_config}{os.pathsep}pythonnet{os.sep}runtime"] if python_runtime_config else [] ),
+        *( [f"--add-data={python_runtime_config}{os.pathsep}."] if python_runtime_config else [] ),
 
         "--osx-bundle-identifier=com.riedoi.captionary",
         
