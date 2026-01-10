@@ -75,6 +75,7 @@ def build():
     # [FIX] Manually locate Python.Runtime.dll and .deps.json for pythonnet/clr_loader on Windows
     python_runtime_dll = None
     python_runtime_json = None
+    python_runtime_config = None
     if sys.platform.startswith("win"):
         try:
             import pythonnet
@@ -105,7 +106,6 @@ def build():
 
             # [FIX] Also look for runtimeconfig.json (Critical for .NET 6+ initialization)
             # Usually named Python.Runtime.runtimeconfig.json
-            python_runtime_config = None
             config_path = os.path.join(pynet_path, "runtime", "Python.Runtime.runtimeconfig.json")
             if os.path.exists(config_path):
                 python_runtime_config = config_path
