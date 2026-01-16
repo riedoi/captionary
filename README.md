@@ -73,7 +73,7 @@ You can also use the Docker image to run the CLI tool directly on your files wit
 
 ```bash
 # Mount current directory to /data in container and process video.mkv
-docker run --rm -v $(pwd):/data -v huggingface_cache:/root/.cache/huggingface ghcr.io/riedoi/captionary:latest python fw_srt.py /data/video.mkv --model medium
+docker run --rm -v "$(pwd)":/data -v huggingface_cache:/root/.cache/huggingface ghcr.io/riedoi/captionary:latest python fw_srt.py "/data/video.mkv"
 ```
 *Note: Make sure to use `/data/filename` so the container can find your mounted file.*
 
@@ -96,7 +96,7 @@ You can use `fw_srt.py` directly for batch processing.
 
 **Transcribe a single file:**
 ```bash
-python fw_srt.py video.mkv --model medium --lang tr
+python fw_srt.py video.mkv --lang tr
 ```
 
 **Transcribe multiple files:**
@@ -110,7 +110,7 @@ python fw_srt.py /path/to/media/folder --device cuda
 ```
 
 **Options:**
-- `--model`: Model size (tiny, base, small, medium, large-v2, large-v3) or `nebi/whisper-large-v3-turbo-swiss-german-ct2-int8`. Default: `medium`.
+- `--model`: Model size (tiny, base, small, medium, large-v2, large-v3, large-v3-turbo). Default: `large-v3-turbo`.
 - `--lang`: Language code (e.g., en, tr, de, fr). Default: Auto-detect.
 - `--device`: Compute device (`cpu` or `cuda`). Default: `cpu`.
 - `--compute_type`: Quantization (`int8`, `float16`, etc.). Default: `int8`.

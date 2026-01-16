@@ -106,7 +106,7 @@ def transcribe_file(audio_path, model_size="medium", lang=None, offset_str="", d
 def main():
     ap = argparse.ArgumentParser(description="Captionary CLI - Auto-generate subtitles for audio/video files.")
     ap.add_argument("input_path", nargs="+", help="Audio file(s) or directory to transcribe")
-    ap.add_argument("--model", default="medium", help="Model size: tiny, base, small, medium, large-v2, large-v3, or HuggingFace ID (e.g. nebi/whisper-large-v3-turbo-swiss-german-ct2-int8). (Default: medium)")
+    ap.add_argument("--model", default="large-v3-turbo", help="Model size: tiny, base, small, medium, large-v2, large-v3, large-v3-turbo. (Default: large-v3-turbo)")
     ap.add_argument("--lang", default=None, help="Language code (e.g. en, tr). (Default: Auto-detect)")
     ap.add_argument("--offset", default="", help="Time offset for subtitles, e.g. 00:30:00. (Default: None)")
     ap.add_argument("--device", default="cpu", help="Compute device: cpu or cuda. (Default: cpu)")

@@ -62,7 +62,7 @@ async def download_file(filename: str, background_tasks: BackgroundTasks, downlo
 async def transcribe(
     file: UploadFile = File(None),
     file_path: str = Form(None),
-    model: str = Form("medium"),
+    model: str = Form("large-v3-turbo"),
     lang: str = Form(None),
     offset: str = Form(""),
     device: str = Form("cpu"),
