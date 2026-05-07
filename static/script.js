@@ -6,6 +6,52 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = document.getElementById('submitBtn');
     const spinner = document.getElementById('spinner');
     const statusMessage = document.getElementById('statusMessage');
+    const modelSelect = document.getElementById('model');
+    const langSelect = document.getElementById('lang');
+    const translateSelect = document.getElementById('translate_to');
+
+    const SWISS_GERMAN_MODEL = 'nebi/whisper-large-v3-turbo-swiss-german-ct2-int8';
+
+    let TRANSLATION_PAIRS = {};
+
+    async function fetchTranslationPairs() {
+        try {
+            const res = await fetch('/api/translations');
+            if (res.ok) {
+                TRANSLATION_PAIRS = await res.json();
+                updateTranslateOptions();
+            }
+        } catch (e) {
+            console.error("Failed to load translation pairs", e);
+        }
+    }
+
+    function updateTranslateOptions() {
+        const lang = langSelect.value;
+        const validTargets = TRANSLATION_PAIRS[lang] || [];
+
+        Array.from(translateSelect.options).forEach(opt => {
+            if (opt.value === '') {
+                opt.disabled = false;  // "None" always available
+            } else {
+                opt.disabled = !validTargets.includes(opt.value);
+                if (opt.selected && opt.disabled) {
+                    translateSelect.value = '';
+                }
+            }
+        });
+    }
+
+    langSelect.addEventListener('change', () => {
+        if (langSelect.value === 'gsw') {
+            modelSelect.value = SWISS_GERMAN_MODEL;
+            showStatus('Swiss German model auto-selected.', 'normal');
+        }
+        updateTranslateOptions();
+    });
+
+    // Initialize on load
+    fetchTranslationPairs();
 
     // Drag and drop handlers
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -46,23 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.pywebview && window.pywebview.api) {
             const filePath = await window.pywebview.api.pick_file();
             if (filePath) {
-                // Store path in a hidden or state variable
                 window.selectedFilePath = filePath;
-                // Show path-only name (or full path if you prefer)
                 fileNameDisplay.textContent = filePath.split('/').pop() || filePath.split('\\').pop();
-                // Clear drag-and-drop file input
                 fileInput.value = '';
             }
         } else {
-            // Fallback for browser testing
             document.getElementById('fileInput').click();
         }
     };
 
-    // Update button onclick attribute in HTML handled below or update HTML file?
-    // Let's just attach event listener to the existing button if we can find it.
-    // The HTML has onclick="document.getElementById('fileInput').click()". 
-    // We should override this behavior.
     const browseBtn = document.querySelector('.btn-secondary');
     if (browseBtn) {
         browseBtn.onclick = (e) => {
@@ -79,30 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (files.length > 0) {
             fileInput.files = files;
             fileNameDisplay.textContent = files[0].name;
-            window.selectedFilePath = null; // Clear native path if user used drag-drop/fallback
+            window.selectedFilePath = null;
         }
     }
 
     // Form submission
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        // Handle Swiss German selection
-        const modelSelect = document.getElementById('model');
-        const langSelect = document.getElementById('lang');
-        const SWISS_GERMAN_MODEL = 'nebi/whisper-large-v3-turbo-swiss-german-ct2-int8';
-
-        langSelect.addEventListener('change', () => {
-            if (langSelect.value === 'gsw') {
-                modelSelect.value = SWISS_GERMAN_MODEL;
-                showStatus('Swiss German model auto-selected.', 'normal');
-            }
-        });
-
-        modelSelect.addEventListener('change', () => {
-            // Optional logic if needed when model changes manually
-        });
-
 
         if (!fileInput.files.length && !window.selectedFilePath) {
             showStatus('Please select a file first.', 'error');
@@ -124,8 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (window.selectedFilePath) {
             formData.append('file_path', window.selectedFilePath);
-            // If we have a path, we don't need the file input content?
-            // But Form might still send empty file part. Backend handles logic.
         }
 
         // Map Swiss German (gsw) to German (de) for the backend/model
@@ -140,8 +159,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Server responded with ${response.status}: ${errText}`);
+                let errMessage = `Server responded with ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData.message) {
+                        errMessage = errorData.message;
+                    }
+                } catch(e) {
+                    // Ignore, fallback to generic
+                }
+                throw new Error(errMessage);
             }
 
             const reader = response.body.getReader();
@@ -171,31 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             progressText.textContent = '100%';
                             showStatus('Transcription complete! Download started.', 'success');
 
-                            // Fetch and save via native API
-                            try {
-                                const fileRes = await fetch(data.url);
-                                const text = await fileRes.text();
+                            // Download original SRT
+                            await downloadSrtFile(data.url);
 
-                                const urlParams = new URLSearchParams(data.url.split('?')[1]);
-                                const filename = urlParams.get('download_name') || 'subtitles.srt';
-
-                                if (window.pywebview && window.pywebview.api) {
-                                    await window.pywebview.api.save_file(text, filename);
-                                    showStatus('File saved successfully!', 'success');
-                                } else {
-                                    // Fallback for non-webview (e.g. browser testing)
-                                    const blob = new Blob([text], { type: 'text/plain' });
-                                    const a = document.createElement('a');
-                                    a.style.display = 'none';
-                                    a.href = URL.createObjectURL(blob);
-                                    a.download = filename;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                }
-                            } catch (e) {
-                                console.error('Download error:', e);
-                                showStatus(`Download failed: ${e.message}`, 'error');
+                            // Download translated SRT if available
+                            if (data.translated_url) {
+                                showStatus('Downloading translated subtitles...', 'success');
+                                await downloadSrtFile(data.translated_url);
+                                showStatus('Both original and translated subtitles downloaded!', 'success');
                             }
                         } else if (data.type === 'error') {
                             showStatus(`Error: ${data.message}`, 'error');
@@ -223,5 +233,31 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.className = 'status-message';
         if (type === 'success') statusMessage.classList.add('status-success');
         if (type === 'error') statusMessage.classList.add('status-error');
+    }
+
+    async function downloadSrtFile(url) {
+        try {
+            const fileRes = await fetch(url);
+            const text = await fileRes.text();
+
+            const urlParams = new URLSearchParams(url.split('?')[1]);
+            const filename = urlParams.get('download_name') || 'subtitles.srt';
+
+            if (window.pywebview && window.pywebview.api) {
+                await window.pywebview.api.save_file(text, filename);
+            } else {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        } catch (e) {
+            console.error('Download error:', e);
+            showStatus(`Download failed: ${e.message}`, 'error');
+        }
     }
 });

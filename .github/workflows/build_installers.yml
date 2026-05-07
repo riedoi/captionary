@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [macos-latest]
 
     steps:
     - uses: actions/checkout@v3
@@ -36,14 +36,6 @@ jobs:
     - name: Build Executable
       run: python build_executable.py
 
-    # Windows Packaging
-    - name: Package Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        Compress-Archive -Path dist/Captionary -DestinationPath dist/Captionary-Windows.zip
-        $hash = (Get-FileHash dist/Captionary-Windows.zip -Algorithm SHA256).Hash
-        "$hash *Captionary-Windows.zip" | Out-File dist/Captionary-Windows.zip.sha256 -Encoding ASCII
-
     # macOS Packaging
     - name: Package macOS
       if: matrix.os == 'macos-latest'
@@ -60,8 +52,6 @@ jobs:
       with:
         name: artifacts-${{ matrix.os }}
         path: |
-          dist/Captionary-Windows.zip
-          dist/Captionary-Windows.zip.sha256
           dist/Captionary-macOS.dmg
           dist/Captionary-macOS.dmg.sha256
         if-no-files-found: ignore

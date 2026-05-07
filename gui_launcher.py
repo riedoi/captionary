@@ -1,20 +1,37 @@
 import os
 import sys
-import threading
-import uvicorn
-import webview
-from app import app
-import time
 import logging
+import traceback
 
-# Setup logging to file
+# Setup logging immediately to catch import errors
 log_file = os.path.join(os.path.expanduser("~"), "captionary_debug.log")
 logging.basicConfig(
     filename=log_file,
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-logging.info("Starting up...")
+
+# Global exception hook to catch crashes
+def exception_hook(exc_type, exc_value, exc_traceback):
+    logging.critical("Uncaught exception:", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = exception_hook
+
+logging.info("Starting up - Phase 1: Imports")
+
+try:
+    import threading
+    import time
+    import uvicorn
+    import webview
+    # Delay app import to ensure logging is active
+    from app import app
+    logging.info("Imports successful")
+except Exception as e:
+    logging.critical(f"Failed to import dependencies: {e}", exc_info=True)
+    # Ensure usage of exception hook or manual msgbox
+    sys.excepthook(type(e), e, e.__traceback__)
+    sys.exit(1)
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -40,10 +57,7 @@ def resource_path(relative_path):
 
 def setup_environment():
     """ Configure environment to use bundled ffmpeg """
-    if sys.platform.startswith('win'):
-        ffmpeg_name = 'ffmpeg.exe'
-    else:
-        ffmpeg_name = 'ffmpeg'
+    ffmpeg_name = 'ffmpeg'
     
     ffmpeg_path = resource_path(ffmpeg_name)
     
@@ -95,13 +109,24 @@ class JSApi:
         return None
 
 import multiprocessing
+import socket
+import urllib.request
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     setup_environment()
     
+    # Signal to app.py that it is running via local desktop wrapper
+    os.environ["DESKTOP_MODE"] = "1"
+    
     HOST = "127.0.0.1"
-    PORT = 8000
+    
+    # Find an open port
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, 0))
+    PORT = s.getsockname()[1]
+    s.close()
+    
     URL = f"http://{HOST}:{PORT}"
     
     # Start server in a Daemon thread so it closes when main thread closes
@@ -109,8 +134,14 @@ if __name__ == "__main__":
     t.daemon = True
     t.start()
     
-    # Give server a moment to start
-    time.sleep(1)
+    # Wait for server to be ready
+    for _ in range(50):
+        try:
+            req = urllib.request.urlopen(URL)
+            if req.getcode() == 200:
+                break
+        except Exception:
+            time.sleep(0.1)
     
     api = JSApi()
     # Create the native window

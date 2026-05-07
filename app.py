@@ -5,7 +5,7 @@ import sys
 import tempfile
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 import json
 import fw_srt
 import logging
@@ -57,6 +57,18 @@ async def download_file(filename: str, background_tasks: BackgroundTasks, downlo
         return FileResponse(file_path, filename=display_name, media_type="application/x-subrip")
     return {"error": "File not found"}
 
+@app.get("/api/translations")
+async def get_translations():
+    pairs_dict = {}
+    for src, tgt in fw_srt.TRANSLATION_PAIRS:
+        if src not in pairs_dict:
+            pairs_dict[src] = []
+        pairs_dict[src].append(tgt)
+    # Map Swiss German (gsw) to same options as German
+    if 'de' in pairs_dict:
+        pairs_dict['gsw'] = pairs_dict['de']
+    return pairs_dict
+
 
 @app.post("/transcribe")
 async def transcribe(
@@ -66,7 +78,8 @@ async def transcribe(
     lang: str = Form(None),
     offset: str = Form(""),
     device: str = Form("cpu"),
-    compute_type: str = Form("int8")
+    compute_type: str = Form("int8"),
+    translate_to: str = Form(None)
 ):
     try:
         logging.info(f"Received transcription request. Model={model}")
@@ -75,11 +88,9 @@ async def transcribe(
         
         # Determine source: Direct path or Uploaded file
         if file_path and os.path.exists(file_path):
+            if os.environ.get("DESKTOP_MODE") != "1":
+                return JSONResponse(status_code=403, content={"type": "error", "message": "Direct file paths are only allowed in Desktop mode."})
             logging.info(f"Using local file path: {file_path}")
-            # We can use the file directly, but to keep logic consistent (and safe from modifying original),
-            # we might just pass this path to the transcriber.
-            # However, the transcriber reads from disk.
-            # Let's just use this path explicitly.
             process_path = file_path
             
         elif file:
@@ -104,12 +115,7 @@ async def transcribe(
         
     except Exception as e:
         logging.error(f"Error saving file: {e}", exc_info=True)
-        return {"type": "error", "message": f"Failed to save file: {e}"} # Return JSON error, implies 200 OK but handled by JS? 
-        # Actually returning a dict here might break the expectation of StreamingResponse if JS expects stream. 
-        # But if we error here, we haven't started stream. JS check for !response.ok will see 200 OK but json body? 
-        # Better to return JSONResponse with status 500 or just raise HTTPException.
-        # But for debug, let's just raise it after logging.
-        raise e
+        return JSONResponse(status_code=400, content={"type": "error", "message": f"Failed to setup transcription: {str(e)}"})
 
     async def event_generator():
         try:
@@ -121,7 +127,8 @@ async def transcribe(
                 lang=lang if lang else None,
                 offset_str=offset,
                 device=device,
-                compute_type=compute_type
+                compute_type=compute_type,
+                translate_to=translate_to if translate_to else None
             )
             
             for item in generator:
@@ -130,7 +137,16 @@ async def transcribe(
                     generated_filename = os.path.basename(item["path"])
                     original_name = os.path.basename(file_path) if file_path else file.filename
                     original_srt_name = os.path.splitext(original_name)[0] + ".srt"
-                    yield json.dumps({"type": "complete", "url": f"/download/{generated_filename}?download_name={original_srt_name}"}) + "\n"
+                    
+                    result = {"type": "complete", "url": f"/download/{generated_filename}?download_name={original_srt_name}"}
+                    
+                    # Include translated file URL if available
+                    if "translated_path" in item:
+                        trans_filename = os.path.basename(item["translated_path"])
+                        trans_srt_name = os.path.splitext(original_name)[0] + f"_{translate_to}.srt"
+                        result["translated_url"] = f"/download/{trans_filename}?download_name={trans_srt_name}"
+                    
+                    yield json.dumps(result) + "\n"
                 else:
                     yield json.dumps(item) + "\n"
                     
