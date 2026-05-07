@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 # Install system dependencies
 # ffmpeg is often required for audio processing
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
